@@ -1,5 +1,13 @@
 # Google Meet Attendance Tracker
 
+### OVERVIEW
+
+Want to know which people you most do Google Meets with? How about which meetings have the most people, or how your meeting attendance changes over time?
+
+Premise: 
+Host a Google Meet -> Google sends you a CSV after with attendee details -> Appscript processes your attendee CSVs into a central Google sheet -> Now you can report/slice/dice/dashboard to your heart's content.
+
+
 ### ASSUMPTIONS:
  - The CSV filename format used by Google (as of October 9th) is: "YYYY-MM-DD HH-MM Name of Meeting.csv"
  - If the name format changes, the script may generate unexpected data for some of the derived columns (meeting name and date)
