@@ -50,7 +50,7 @@ var PROCESSED_CSV_DRIVE_FOLDER_ID = "1fzw_Vxy45htrsFjEI_D";
 function set_sheet_headers() {
   
   var sheet = SpreadsheetApp.openByUrl(SHEET_URL).getSheetByName(SHEET_TAB_NAME);
-  sheet.appendRow(["File_Name","File_Id","Meeting_Name","Meeting_Date","Name","Email","Duration","Time Joined","Time Exited","Date_Time_Joined","Date_Time_Exited","Duration_Seconds"]);
+  sheet.appendRow(["File_Name","File_Id","Meeting_Name","Meeting_Date","Name","Email","Duration","Time Joined","Time Exited","Date_Time_Joined","Date_Time_Exited","Duration_Seconds","Meeting_Owner_Email"]);
   
 }
 
@@ -90,6 +90,14 @@ function importCSVbyFileId(file_id) {
   var ss = SpreadsheetApp.openByUrl(SHEET_URL).getSheetByName(SHEET_TAB_NAME);
   var file = DriveApp.getFileById(file_id);
   
+  var owner = file.getOwner();
+  try {
+      var OWNER_EMAIL = owner.getEmail();
+    } catch (e) {
+      var OWNER_EMAIL = 'NULL';
+      Logger.log('Error owner.getEmail() | CAUGHT EXCEPTION:' + e);
+    }
+
   var csvData = Utilities.parseCsv(file.getBlob().getDataAsString());
 
   // loop through the CSV rows skipping the first row headers
@@ -105,6 +113,9 @@ function importCSVbyFileId(file_id) {
     // explode the time column value so we can tell if it's a string of hours, mins, or secs (or combination)
     var TIME_ARRAY = csvData[i][2].split(' '); // split string on comma space
     if(TIME_ARRAY[1] == "hr") {
+      var DURATION_MINS = parseInt(TIME_ARRAY[0]) * 60 * 60;
+    } 
+    if(TIME_ARRAY[1] == "hr" && TIME_ARRAY[3] == "min") {
       var DURATION_MINS = parseInt(TIME_ARRAY[0]) * 60 * 60 + parseInt(TIME_ARRAY[2]) * 60;
     } 
     if(TIME_ARRAY[1] == "min") {
@@ -115,7 +126,7 @@ function importCSVbyFileId(file_id) {
     }
 
     // append the data to the sheet
-    ss.appendRow([file.getName(),file_id,MEETING_NAME,MEETING_DATE,csvData[i][0],csvData[i][1],csvData[i][2],csvData[i][3],csvData[i][4], JOINED, EXITED, DURATION_MINS]);
+    ss.appendRow([file.getName(),file_id,MEETING_NAME,MEETING_DATE,csvData[i][0],csvData[i][1],csvData[i][2],csvData[i][3],csvData[i][4], JOINED, EXITED, DURATION_MINS,OWNER_EMAIL]);
   }
   
 }
