@@ -106,7 +106,7 @@ function importCSVbyFileId(file_id) {
 
     var AFTER_FIRST_SPACE = file.getName().substr(file.getName().indexOf(' ')+1);
     var MEETING_NAME = AFTER_FIRST_SPACE.substr(AFTER_FIRST_SPACE.indexOf(' ')+1).replace(" - Attendance Report.csv", "");
-    var MEETING_DATE = file.getName().substring(1, 10);
+    var MEETING_DATE = file.getName().substring(0, 10);
     var JOINED = "=concatenate(text(\"" + MEETING_DATE + "\",\"mm/dd/yyyy\")&\" \"&text(\"" + csvData[i][3] + "\",\"hh:mm:ss\"))";
     var EXITED = "=concatenate(text(\"" + MEETING_DATE + "\",\"mm/dd/yyyy\")&\" \"&text(\"" + csvData[i][4] + "\",\"hh:mm:ss\"))";
 
