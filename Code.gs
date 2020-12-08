@@ -74,14 +74,9 @@ function process_all_pending_csv_files(){
       file.setTrashed(true);
 
     } else {
-      // remove the CSV file from the "Pending" folder 
-      file.getParents().next().removeFile(file);
-      // add the removed CSV file to the "Processed" folder
-      //DriveApp.getFolderById(PROCESSED_CSV_DRIVE_FOLDER_ID).addFile(file);
-
+      // move the processed CSV file to the "Processed" folder
       var newFolder = DriveApp.getFolderById(PROCESSED_CSV_DRIVE_FOLDER_ID);
       file.moveTo(newFolder); // uses the new method that supports Shared Drives as well as regular Google Drive.
-      
     }
     
   } 
