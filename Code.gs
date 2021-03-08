@@ -59,7 +59,8 @@ function process_all_pending_csv_files(){
   var folder = DriveApp.getFolderById(PENDING_CSV_DRIVE_FOLDER_ID);
   var list = [];
   //list.push(['File_Name','File_Id']); // uncomment if you want to set a header row here
-  var files = folder.getFiles();
+  //var files = folder.getFiles(); // old version which did not account for non-CSV files being in the same folder
+  var files = folder.getFilesByType('text/csv');
   while (files.hasNext()){
     var file = files.next();
     
