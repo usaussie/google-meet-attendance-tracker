@@ -2,11 +2,11 @@
 *
 * GOOGLE MEET ATTENDANCE TRACKER
 * Author: Nick Young
-* Email: usaussie@gmail.com
+* Email: nick@techupover.com
 *
 *
 * ASSUMPTIONS:
-* The CSV filename format used by Google (as of October 9th) is: "YYYY-MM-DD HH-MM Name of Meeting.csv"
+* The CSV filename format used by Google (as of October 7th, 2021) is: "YYYY-MM-DD HH:MM {Meeting Name} - Attendance Report.csv"
 * If the name format changes, the script may generate unexpected data for some of the derived columns (meeting name and date)
 *
 * INSTRUCTIONS: 
@@ -25,17 +25,22 @@
 *
 *************************************************/
 // google sheet to store aggregate CSV info
-var SHEET_URL = "https://docs.google.com/spreadsheets/d/your-document-id";
+var SHEET_URL = "https://docs.google.com/spreadsheets/d/your-sheet-id/edit";
 var SHEET_TAB_NAME = "data";
 
 // folder ID for where to look for CSV files to process
 // IE: the last part of the folder URL, like: https://drive.google.com/drive/u/0/folders/1fzw_Vx8uoidshda_B6SOFjEI_Co
-var PENDING_CSV_DRIVE_FOLDER_ID = "1fzw_Vx8uoidshda_B6SOFjEI_Co";
+var PENDING_CSV_DRIVE_FOLDER_ID = "your-drive-folder-id";
 
 // trash files after processing, or just move to another drive
-var TRASH_FILES_AFTER_MOVE = false; // false|true
+var TRASH_FILES_AFTER_MOVE = false;
 // if TRASH_FILES_AFTER_MOVE  is false, then put them into this folder ID
-var PROCESSED_CSV_DRIVE_FOLDER_ID = "1fzw_Vxy45htrsFjEI_D";
+var PROCESSED_CSV_DRIVE_FOLDER_ID = "another-folder-id";
+
+// only need to use this if you're using a SHARED DRIVE INSTEAD OF MY DRIVE
+//comment out one of these lines
+var DEFAULT_OWNER_EMAIL = 'your-email@domain.edu';
+//var DEFAULT_OWNER_EMAIL = NULL;
 
 /*************************************************
 *
@@ -59,13 +64,12 @@ function process_all_pending_csv_files(){
   var folder = DriveApp.getFolderById(PENDING_CSV_DRIVE_FOLDER_ID);
   var list = [];
   //list.push(['File_Name','File_Id']); // uncomment if you want to set a header row here
-  //var files = folder.getFiles(); // old version which did not account for non-CSV files being in the same folder
   var files = folder.getFilesByType('text/csv');
   while (files.hasNext()){
     var file = files.next();
     
     //import the CSV data into the sheet
-    importCSVbyFileId(file.getId());
+    importCSVbyFileId_(file.getId());
 
     // comment the next section out if you're testing and want to leave the files in place
 
@@ -75,27 +79,35 @@ function process_all_pending_csv_files(){
       file.setTrashed(true);
 
     } else {
-      // move the processed CSV file to the "Processed" folder
+      // remove the CSV file from the "Pending" folder 
+      //file.getParents().next().removeFile(file);
+      // add the removed CSV file to the "Processed" folder
+      //DriveApp.getFolderById(PROCESSED_CSV_DRIVE_FOLDER_ID).addFile(file);
+
       var newFolder = DriveApp.getFolderById(PROCESSED_CSV_DRIVE_FOLDER_ID);
-      file.moveTo(newFolder); // uses the new method that supports Shared Drives as well as regular Google Drive.
+      //var copiedFile = file.makeCopy(file.getName(), newFolder);
+      //file.setTrashed(true);
+      
+      file.moveTo(newFolder);
+
     }
     
   } 
 
 }
 
-function importCSVbyFileId(file_id) {
+function importCSVbyFileId_(file_id) {
 
   var ss = SpreadsheetApp.openByUrl(SHEET_URL).getSheetByName(SHEET_TAB_NAME);
   var file = DriveApp.getFileById(file_id);
-  
+
   var owner = file.getOwner();
   try {
       var OWNER_EMAIL = owner.getEmail();
-    } catch (e) {
-      var OWNER_EMAIL = 'NULL';
-      Logger.log('Error owner.getEmail() | CAUGHT EXCEPTION:' + e);
-    }
+  } catch (e) {
+    var OWNER_EMAIL = DEFAULT_OWNER_EMAIL;
+    Logger.log('Error owner.getEmail() | CAUGHT EXCEPTION:' + e);
+  }
 
   var csvData = Utilities.parseCsv(file.getBlob().getDataAsString());
 
@@ -103,14 +115,21 @@ function importCSVbyFileId(file_id) {
   for (var i = 1; i < csvData.length; i++) {
     // build the row
 
+    var RAW_NAME = csvData[i][0] + " " + csvData[i][1];
+    var RAW_EMAIL = csvData[i][2];
+    var RAW_DURATION = csvData[i][3];
+    var RAW_TIME_JOINED = csvData[i][4];
+    var RAW_TIME_EXITED = csvData[i][5];
+    
     var AFTER_FIRST_SPACE = file.getName().substr(file.getName().indexOf(' ')+1);
     var MEETING_NAME = AFTER_FIRST_SPACE.substr(AFTER_FIRST_SPACE.indexOf(' ')+1).replace(" - Attendance Report.csv", "");
     var MEETING_DATE = file.getName().substring(0, 10);
-    var JOINED = "=concatenate(text(\"" + MEETING_DATE + "\",\"mm/dd/yyyy\")&\" \"&text(\"" + csvData[i][3] + "\",\"hh:mm:ss\"))";
-    var EXITED = "=concatenate(text(\"" + MEETING_DATE + "\",\"mm/dd/yyyy\")&\" \"&text(\"" + csvData[i][4] + "\",\"hh:mm:ss\"))";
+    var JOINED = "=concatenate(text(\"" + MEETING_DATE + "\",\"mm/dd/yyyy\")&\" \"&text(\"" + csvData[i][4] + "\",\"hh:mm:ss\"))";
+    var EXITED = "=concatenate(text(\"" + MEETING_DATE + "\",\"mm/dd/yyyy\")&\" \"&text(\"" + csvData[i][5] + "\",\"hh:mm:ss\"))";
+    
 
     // explode the time column value so we can tell if it's a string of hours, mins, or secs (or combination)
-    var TIME_ARRAY = csvData[i][2].split(' '); // split string on comma space
+    var TIME_ARRAY = RAW_DURATION.split(' '); // split string on comma space
     if(TIME_ARRAY[1] == "hr") {
       var DURATION_MINS = parseInt(TIME_ARRAY[0]) * 60 * 60;
     } 
@@ -118,14 +137,14 @@ function importCSVbyFileId(file_id) {
       var DURATION_MINS = parseInt(TIME_ARRAY[0]) * 60 * 60 + parseInt(TIME_ARRAY[2]) * 60;
     } 
     if(TIME_ARRAY[1] == "min") {
-      var DURATION_MINS = parseInt(csvData[i][2].substr(0, csvData[i][2].indexOf(' '))) * 60;
+      var DURATION_MINS = parseInt(RAW_DURATION.substr(0, RAW_DURATION.indexOf(' '))) * 60;
     } 
     if (TIME_ARRAY[1] == "sec") {
-      var DURATION_MINS = parseInt(csvData[i][2]);
+      var DURATION_MINS = parseInt(RAW_DURATION);
     }
 
     // append the data to the sheet
-    ss.appendRow([file.getName(),file_id,MEETING_NAME,MEETING_DATE,csvData[i][0],csvData[i][1],csvData[i][2],csvData[i][3],csvData[i][4], JOINED, EXITED, DURATION_MINS,OWNER_EMAIL]);
+    ss.appendRow([file.getName(),file_id,MEETING_NAME,MEETING_DATE,RAW_NAME,RAW_EMAIL,RAW_DURATION,RAW_TIME_JOINED,RAW_TIME_EXITED, JOINED, EXITED, DURATION_MINS,OWNER_EMAIL]);
   }
   
 }
